@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,11 +18,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -43,7 +47,7 @@ import com.example.sovialservice_mobile.view_model.RegisterVM
 import java.util.Calendar
 
 class RegisterActivity : ComponentActivity() {
-    private val registerVM = RegisterVM()
+    private lateinit var registerVM: RegisterVM
 
     enum class StateRegister{
         StateUserData,
@@ -54,6 +58,7 @@ class RegisterActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        registerVM = RegisterVM(this)
         setContent {
             SovialService_mobileTheme {
                 RegisterScreen()
@@ -121,6 +126,7 @@ class RegisterActivity : ComponentActivity() {
                                     .height(50.dp)
                                     .clickable {
                                         when (state) {
+
                                             StateRegister.StateDocumentData -> state =
                                                 StateRegister.StateUserData
 
@@ -152,18 +158,29 @@ class RegisterActivity : ComponentActivity() {
                             .clickable {
                                 when (state) {
                                     StateRegister.StateUserData -> {
-                                        if (registerVM.onUserData()) {
+                                        if (registerVM.onClickUserData()) {
                                             state = StateRegister.StateDocumentData
                                         }
                                     }
 
-                                    StateRegister.StateDocumentData -> state =
-                                        StateRegister.StateAddressData
+                                    StateRegister.StateDocumentData -> {
+                                        if (registerVM.onClickDocumentData() and (registerVM.onGetSnils())) {
+                                            state = StateRegister.StateAddressData
+                                        }
+                                    }
 
-                                    StateRegister.StateAddressData -> state =
-                                        StateRegister.StatePasswordData
+                                    StateRegister.StateAddressData -> {
+                                        if (registerVM.onClickAddressData()) {
+                                            state = StateRegister.StatePasswordData
+                                        }
+                                    }
 
-                                    else -> {}
+                                    StateRegister.StatePasswordData -> {
+                                        if ((registerVM.onClickPasswordData())) {
+                                            registerVM.onRegisterUser()
+                                            finish()
+                                        }
+                                    }
                                 }
                             }
                     ) {
@@ -201,6 +218,9 @@ class RegisterActivity : ComponentActivity() {
                 )
             }
         }
+        if (registerVM.dialogState.value){
+            AlertDialog()
+        }
     }
 
     @Composable
@@ -210,13 +230,14 @@ class RegisterActivity : ComponentActivity() {
         Column(
             Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.7f),
+                .fillMaxHeight(0.7f)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Center,
         ) {
             TextField(
                 value = registerVM.surname.value,
                 onValueChange = {
-                    registerVM.setSurname(it.filter { char -> char.isLetter() })
+                    registerVM.setSurname(it)
                                 },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
@@ -233,7 +254,7 @@ class RegisterActivity : ComponentActivity() {
                 )
             TextField(
                 value = registerVM.name.value,
-                onValueChange = {registerVM.setName(it.filter { char -> char.isLetter() })},
+                onValueChange = {registerVM.setName(it)},
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -249,7 +270,7 @@ class RegisterActivity : ComponentActivity() {
             )
             TextField(
                 value = registerVM.patronymic.value,
-                onValueChange = {registerVM.setPatronymic(it.filter { char -> char.isLetter() })},
+                onValueChange = {registerVM.setPatronymic(it)},
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -263,7 +284,22 @@ class RegisterActivity : ComponentActivity() {
                 textStyle = TextStyle(fontSize = 24.sp),
                 maxLines = 1,
             )
-
+            TextField(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(10.dp)
+                    .fillMaxWidth(0.85f),
+                label = {
+                    Text(
+                        "Дата рождения",
+                        Modifier
+                            .padding(5.dp)
+                    ) },
+                textStyle = TextStyle(fontSize = 24.sp),
+                value = registerVM.brithdate.value,
+                onValueChange = { registerVM.setBrithdate(it) },
+                maxLines = 1,
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number))
             TextField(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
@@ -279,23 +315,10 @@ class RegisterActivity : ComponentActivity() {
                 value = registerVM.phone.value,
                 onValueChange = {
                     if(it.length <= 11){
-                        registerVM.setPhone(it.filter { char -> char.isDigit() })
+                        registerVM.setPhone(it)
                     } },
                 maxLines = 1,
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                trailingIcon = {
-                    if(registerVM.phoneState.value){
-                        Icon(
-                            Icons.Filled.Check,
-                            contentDescription = "Коректный ввод"
-                        )
-                    } else{
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = "Некоректный ввод"
-                        )
-                    }
-                })
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number))
             TextField(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
@@ -311,14 +334,7 @@ class RegisterActivity : ComponentActivity() {
                 value = registerVM.email.value,
                 onValueChange = { registerVM.setEmail(it) },
                 maxLines = 1,
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email),
-                trailingIcon = {
-                    if(registerVM.phoneState.value){
-                        Icon(Icons.Filled.Check, contentDescription = "Коректный ввод")
-                    } else{
-                        Icon(Icons.Filled.Close, contentDescription = "Некоректный ввод")
-                    }
-                })
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Email))
         }
     }
 
@@ -327,12 +343,13 @@ class RegisterActivity : ComponentActivity() {
         Column(
             Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.7f),
+                .fillMaxHeight(0.7f)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.Center,
         ) {
             TextField(
                 value = registerVM.region.value,
-                onValueChange = { registerVM.setRegion(it.filter { char -> char.isLetter() }) },
+                onValueChange = { registerVM.setRegion(it) },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -349,7 +366,7 @@ class RegisterActivity : ComponentActivity() {
             )
             TextField(
                 value = registerVM.regionSmall.value,
-                onValueChange = { registerVM.setRegionSmall(it.filter { char -> char.isLetter() }) },
+                onValueChange = { registerVM.setRegionSmall(it) },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -366,7 +383,7 @@ class RegisterActivity : ComponentActivity() {
             )
             TextField(
                 value = registerVM.city.value,
-                onValueChange = { registerVM.setCity(it.filter { char -> char.isLetter() }) },
+                onValueChange = { registerVM.setCity(it) },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -383,7 +400,7 @@ class RegisterActivity : ComponentActivity() {
             )
             TextField(
                 value = registerVM.street.value,
-                onValueChange = { registerVM.setStreet(it.filter { char -> char.isLetter() }) },
+                onValueChange = { registerVM.setStreet(it) },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -417,7 +434,7 @@ class RegisterActivity : ComponentActivity() {
             )
             TextField(
                 value = registerVM.appartment.value,
-                onValueChange = { registerVM.setAppartment(it.filter { char -> char.isDigit() }) },
+                onValueChange = { registerVM.setAppartment(it) },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -431,6 +448,7 @@ class RegisterActivity : ComponentActivity() {
                 },
                 textStyle = TextStyle(fontSize = 24.sp),
                 maxLines = 1,
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             )
         }
     }
@@ -446,7 +464,9 @@ class RegisterActivity : ComponentActivity() {
             TextField(
                 value = registerVM.snils.value,
                 onValueChange = {
-                    registerVM.setSnils(it.filter { char -> char.isDigit() })
+                    if(it.length <=11){
+                        registerVM.setSnils(it)
+                    }
                 },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
@@ -461,10 +481,12 @@ class RegisterActivity : ComponentActivity() {
                 },
                 textStyle = TextStyle(fontSize = 24.sp),
                 maxLines = 1,
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             )
             TextField(
+                enabled = false,
                 value = registerVM.document.value,
-                onValueChange = { registerVM.setDocument(it.filter { char -> char.isLetter() }) },
+                onValueChange = { registerVM.setDocument(it)},
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -481,7 +503,10 @@ class RegisterActivity : ComponentActivity() {
             )
             TextField(
                 value = registerVM.documentNumber.value,
-                onValueChange = { registerVM.setDocumentNumber(it) },
+                onValueChange = {
+                    if (it.length < 11){
+                        registerVM.setDocumentNumber(it)
+                    } },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(10.dp)
@@ -495,6 +520,7 @@ class RegisterActivity : ComponentActivity() {
                 },
                 textStyle = TextStyle(fontSize = 24.sp),
                 maxLines = 1,
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
             )
         }
     }
@@ -546,5 +572,37 @@ class RegisterActivity : ComponentActivity() {
                 maxLines = 1,
             )
         }
+    }
+
+    @Composable
+    fun AlertDialog(){
+        AlertDialog(
+            onDismissRequest = { registerVM.setDialogState(false) },
+            title = { Text("Ошибка") },
+            text = { Text("Некорректно введены данные") },
+            confirmButton = {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        Modifier
+                            .align(Alignment.CenterVertically)
+                            .background(Color(0xFF2195F2), shape = RoundedCornerShape(20.dp))
+                            .width(100.dp)
+                            .height(40.dp)
+                            .clickable { registerVM.setDialogState(false) }
+                    ) {
+                        Text(
+                            text = "ОК",
+                            Modifier
+                                .align(Alignment.Center),
+                            style = TextStyle(fontSize = 14.sp),
+                            color = Color(0xFFFFFFFF)
+                        )
+                    }
+                }
+            }
+        )
     }
 }

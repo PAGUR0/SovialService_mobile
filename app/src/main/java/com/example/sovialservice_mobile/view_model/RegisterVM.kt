@@ -1,5 +1,6 @@
 package com.example.sovialservice_mobile.view_model
 
+import android.content.Context
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -7,9 +8,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.example.sovialservice_mobile.data.UserData
+import com.example.sovialservice_mobile.model.Db
 import java.util.Calendar
 
-class RegisterVM : ViewModel() {
+class RegisterVM(context: Context) : ViewModel() {
+    val db = Db(context)
 
     private var _surname = mutableStateOf("")
     var surname: State<String> = _surname
@@ -32,10 +36,10 @@ class RegisterVM : ViewModel() {
         _patronymic.value = newPatronymic
     }
 
-    private var _birthdate = mutableStateOf(Calendar.getInstance())
-    var brithdate: State<Calendar> = _birthdate
+    private var _birthdate = mutableStateOf("")
+    var brithdate: State<String> = _birthdate
 
-    fun setBrithdate(newBrithdate: Calendar) {
+    fun setBrithdate(newBrithdate: String) {
         _birthdate.value = newBrithdate
     }
 
@@ -67,7 +71,7 @@ class RegisterVM : ViewModel() {
         _snils.value = newSnils
     }
 
-    private var _document = mutableStateOf("")
+    private var _document = mutableStateOf("Паспорт РФ")
     var document: State<String> = _document
 
     fun setDocument(newDocument: String){
@@ -88,7 +92,7 @@ class RegisterVM : ViewModel() {
         _region.value = newRegion
     }
 
-    private var _regionSmall = mutableStateOf("")
+    private var _regionSmall = mutableStateOf(" ")
     var regionSmall = _regionSmall
 
     fun setRegionSmall(newRegionSmall: String){
@@ -136,4 +140,73 @@ class RegisterVM : ViewModel() {
     fun setCopyPassword(newCopyPassword: String){
         _copyPassword.value = newCopyPassword
     }
+
+    fun onClickUserData(): Boolean{
+        if ((Regex("^(\\+7|8)\\d{10}$").matches(_phone.value)) and (Regex("^(0[1-9]|[12][0-9]|3[01])\\.(0[1-9]|1[0-2])\\.(\\d{4})\$").matches(_birthdate.value)) and (Regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,6}$").matches(_email.value)) and (_surname.value != "") and (_name.value != "") and (_patronymic.value != "") ){
+            return true
+        }
+        _dialogState.value = true
+        return false
+    }
+
+    fun onClickDocumentData(): Boolean{
+        if ((Regex("^[0-9]{11}\$").matches(_snils.value)) and (Regex("^[0-9]{10}\$").matches(_documentNumber.value))){
+            return true
+        }
+        _dialogState.value = true
+        return false
+    }
+
+    fun onClickAddressData(): Boolean{
+        if ((_region.value != "") and (_regionSmall.value != "") and (_city.value != "") and (_street.value != "") and (_home.value != "") and (_appartment.value != "")){
+            return true
+        }
+        _dialogState.value = true
+        return false
+    }
+
+    fun onClickPasswordData(): Boolean{
+        if (_password.value == _copyPassword.value){
+            return true
+        }
+        _dialogState.value = true
+        return false
+    }
+
+    fun onGetSnils(): Boolean{
+        if(db.isSnils(_snils.value)){
+            return true
+        }
+        _dialogState.value = true
+        return false
+    }
+
+    fun onRegisterUser(){
+        db.addUser(UserData(
+            _snils.value,
+            _surname.value,
+            _name.value,
+            _patronymic.value,
+            _birthdate.value,
+            _phone.value,
+            _email.value,
+            _document.value,
+            _documentNumber.value,
+            _password.value,
+            _region.value,
+            _regionSmall.value,
+            _city.value,
+            _street.value,
+            _home.value,
+            _appartment.value
+            ))
+    }
+
+    private var _dialogState= mutableStateOf(false)
+    var dialogState: State<Boolean> = _dialogState
+
+    fun setDialogState(newDialogState: Boolean) {
+        _dialogState.value = newDialogState
+    }
+
 }

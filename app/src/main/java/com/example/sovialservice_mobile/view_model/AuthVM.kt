@@ -1,14 +1,16 @@
 package com.example.sovialservice_mobile.view_model
 
+import android.content.Context
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import com.example.sovialservice_mobile.model.Db
 
-class AuthorisationVM : ViewModel() {
+class AuthVM(context: Context) : ViewModel() {
+    val db = Db(context)
+
     private var _snils= mutableStateOf("")
     var snils: State<String> = _snils
-    private var _snilsState= mutableStateOf(true)
-    var snilsState: State<Boolean> = _snilsState
 
     private var _password = mutableStateOf("")
     var password: State<String> = _password
@@ -24,9 +26,8 @@ class AuthorisationVM : ViewModel() {
     }
 
     fun onLoginClicked(): Boolean {
-        _snilsState.value = snils.value == "12345678911"
-        _passwordState.value = password.value == "1234"
-        return (_snilsState.value) and (_passwordState.value)
+        val login = db.authUser(_snils.value, _password.value)
+        _passwordState.value = login
+        return login
     }
-
 }

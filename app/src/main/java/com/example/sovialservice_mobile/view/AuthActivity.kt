@@ -19,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -33,15 +32,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.sovialservice_mobile.model.Db
 import com.example.sovialservice_mobile.ui.theme.SovialService_mobileTheme
-import com.example.sovialservice_mobile.view_model.AuthorisationVM
+import com.example.sovialservice_mobile.view_model.AuthVM
 
 class AuthActivity : ComponentActivity() {
-    private val authorisationVM = AuthorisationVM()
+    private lateinit var authVM: AuthVM
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        authVM = AuthVM(this)
         setContent {
             SovialService_mobileTheme {
                 AuthorisationScreen()
@@ -73,20 +72,13 @@ class AuthActivity : ComponentActivity() {
                         .padding(10.dp),
                     label = { Text("СНИЛС", Modifier.padding(5.dp)) },
                     textStyle = TextStyle(fontSize = 24.sp),
-                    value = authorisationVM.snils.value,
+                    value = authVM.snils.value,
                     onValueChange = {
                         if(it.length <= 11){
-                            authorisationVM.setSnils(it.filter { char -> char.isDigit() })
+                            authVM.setSnils(it.filter { char -> char.isDigit() })
                         } },
                     maxLines = 1,
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                    trailingIcon = {
-                        if(authorisationVM.snilsState.value){
-                            Icon(Icons.Filled.Check, contentDescription = "Коректный ввод")
-                        } else{
-                            Icon(Icons.Filled.Close, contentDescription = "Некоректный ввод")
-                        }
-                    })
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),)
                 TextField(
                     modifier = Modifier
                         .align(Alignment.CenterHorizontally)
@@ -94,12 +86,12 @@ class AuthActivity : ComponentActivity() {
                     label = { Text("Пароль", Modifier.padding(5.dp)) },
                     textStyle = TextStyle(fontSize = 24.sp),
                     visualTransformation = PasswordVisualTransformation(),
-                    value = authorisationVM.password.value,
-                    onValueChange = {authorisationVM.setPassword(it)},
+                    value = authVM.password.value,
+                    onValueChange = {authVM.setPassword(it)},
                     maxLines = 1,
 
                     trailingIcon = {
-                        if(authorisationVM.passwordState.value){
+                        if(authVM.passwordState.value){
                             Icon(Icons.Filled.Check, contentDescription = "Коректный ввод")
                         } else{
                             Icon(Icons.Filled.Close, contentDescription = "Некоректный ввод")
@@ -113,8 +105,9 @@ class AuthActivity : ComponentActivity() {
                         .width(120.dp)
                         .height(50.dp)
                         .clickable {
-                            if(authorisationVM.onLoginClicked() ){
+                            if(authVM.onLoginClicked() ){
                                 val intent = Intent(this@AuthActivity, MainActivity::class.java)
+                                intent.putExtra("snils", authVM.snils.value)
                                 startActivity(intent)
                                 finish()
                             }
