@@ -1,4 +1,5 @@
 # Приложение "Социальные услуги"
+![image](https://github.com/PAGUR0/SovialService_mobile/assets/119807994/a966e6e6-7c1a-478e-b250-54ad5dcb40a6)
 <p align = "center">
 
 # Цели 
